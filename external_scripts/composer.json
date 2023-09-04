@@ -1,0 +1,19 @@
+{
+    "require": {
+        "guzzlehttp/guzzle": "*",
+        "simplehtmldom/simplehtmldom": "dev-master",
+        "fabpot/goutte": "dev-master",
+        "php-webdriver/webdriver": "dev-main",
+        "jakub-onderka/php-parallel-lint": "^1.0",
+        "runtime/swoole": "dev-main",
+        "react/event-loop": "^0.4.3",
+        "react/http": "^0.4.0",
+        "php-webdriver/webdriver-shadow": "*"
+    },
+    "minimum-stability": "dev",
+    "config": {
+        "allow-plugins": {
+            "symfony/runtime": true
+        }
+    }
+}
