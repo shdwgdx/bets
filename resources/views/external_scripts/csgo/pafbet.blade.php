@@ -36,6 +36,9 @@ function getMatchesSourcePafbetCsgo($url, $bookmaker = 'pafbet')
                     $team1 = $event->event->homeName;
                     $team2 = $event->event->awayName;
 
+                    $id = $event->event->id;
+                    $url_match = "https://www.pafbet.lv/en/betting#/event/$id";
+
                     $existingGames = $league->games;
 
                     $game = findOrCreateItemGameCsgo($existingGames, $team1, $team2, $date ?? now(), Game::class, 52, $league->id);
@@ -45,18 +48,18 @@ function getMatchesSourcePafbetCsgo($url, $bookmaker = 'pafbet')
                             $draw = $event->betOffers[0]->outcomes[1]->odds / 1000;
                             $odd_team2 = $event->betOffers[0]->outcomes[2]->odds / 1000;
                             if (!$game['reverse']) {
-                                Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team1, 'draw' => $draw, 'odd_team2' => $odd_team2]);
+                                Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team1, 'draw' => $draw, 'odd_team2' => $odd_team2, 'url' => $url_match ?? null]);
                             } else {
-                                Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team2, 'draw' => $draw, 'odd_team2' => $odd_team1]);
+                                Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team2, 'draw' => $draw, 'odd_team2' => $odd_team1, 'url' => $url_match ?? null]);
                             }
                         } else {
                             $odd_team1 = $event->betOffers[0]->outcomes[0]->odds / 1000;
                             $odd_team2 = $event->betOffers[0]->outcomes[1]->odds / 1000;
                             $draw = 0;
                             if (!$game['reverse']) {
-                                Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team1, 'draw' => $draw, 'odd_team2' => $odd_team2]);
+                                Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team1, 'draw' => $draw, 'odd_team2' => $odd_team2, 'url' => $url_match ?? null]);
                             } else {
-                                Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team2, 'draw' => $draw, 'odd_team2' => $odd_team1]);
+                                Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team2, 'draw' => $draw, 'odd_team2' => $odd_team1, 'url' => $url_match ?? null]);
                             }
                         }
                     }

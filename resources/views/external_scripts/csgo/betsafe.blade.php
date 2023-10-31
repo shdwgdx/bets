@@ -13,89 +13,146 @@ use App\Models\Odd;
 use App\Models\Sport;
 function getMatchesSourceBetsafeCsgo($url, $bookmaker = 'betsafe')
 {
-    // Устанавливаем параметры для подключения к WebDriver
-    $host = 'http://localhost:9515'; // Адрес и порт WebDriver сервера
+    $headers = [
+        'authority: www.betsafe.lv',
+        'accept: application/json, text/plain, */*',
+        'accept-language: ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
+        'brandid: e1d8f0f5-4918-44c5-b46e-d691eb8998c4',
+        'cloudfront-viewer-country: ES',
+        'content-type: application/json',
+        'cookie: Acquisition_Status_Current=Prospect; Start_Acquisition=Prospect; Client_Status_Current=Prospect; Start_Client_Status=Prospect; Customer_Level=PC; _gcl_au=1.1.545631616.1692770928; Orientation=0; OBG-MARKET=en; OBG-LOBBY=sportsbook; cwr_u=31a4d190-2c36-4830-b6e2-0f914fa5db4b; sloc=%7B%22flags%22%3A%7B%22strm%22%3A1%2C%22customerFavourites%22%3A0%2C%22bbc%22%3A1%7D%2C%22segmentGuid%22%3A%229122d35d-d342-4343-a76d-283b4b18d152%22%7D; _ga=GA1.1.2040730919.1692770928; OptanonAlertBoxClosed=2023-09-04T19:46:12.271Z; CONSENT=%7B%22marketing%22%3A1%2C%22functional%22%3A1%2C%22performance%22%3A1%2C%22targeting%22%3A1%7D; _hjSessionUser_1736811=eyJpZCI6IjU0ODE1OTVjLTU3NTUtNTc3MS05ZTg4LWVkNDUzNzdlNTdjMyIsImNyZWF0ZWQiOjE2OTM4NTY3NzQ2NTksImV4aXN0aW5nIjp0cnVlfQ==; _gid=GA1.2.1810037385.1695735012; Initdone=1; TrafficType=Other Traffic; AffCookie=Missing AffCode; LoadAll=0; crw-_ga=2023-09-26-365; _hjIncludedInSessionSample_1736811=1; _hjSession_1736811=eyJpZCI6IjdmMWQyNWMyLTVkYjAtNGFkNy1hYTE3LTk1YzQ0YmZhODk2OSIsImNyZWF0ZWQiOjE2OTU3MzUwMTgyMzMsImluU2FtcGxlIjp0cnVlfQ==; _hjAbsoluteSessionInProgress=1; OptanonConsent=isIABGlobal=false&datestamp=Tue+Sep+26+2023+16%3A31%3A43+GMT%2B0300+(%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0%2C+%D1%81%D1%82%D0%B0%D0%BD%D0%B4%D0%B0%D1%80%D1%82%D0%BD%D0%BE%D0%B5+%D0%B2%D1%80%D0%B5%D0%BC%D1%8F)&version=6.39.0&hosts=&landingPath=NotLandingPage&groups=C0001%3A1%2CC0003%3A1%2CC0002%3A1%2CC0004%3A1&AwaitingReconsent=false&geolocation=ES%3BMD; cwr_s=eyJzZXNzaW9uSWQiOiJiNTg2YmJkOS1mN2U0LTRiZjgtYTU5ZC0xNTQ2Y2VhYzQ4ZDkiLCJyZWNvcmQiOmZhbHNlLCJldmVudENvdW50Ijo0MCwicGFnZSI6eyJwYWdlSWQiOiIvZW4vc3BvcnRzYm9vay9mb290YmFsbC9jaGFtcGlvbnMtbGVhZ3VlL2NoYW1waW9ucy1sZWFndWUiLCJpbnRlcmFjdGlvbiI6MCwicmVmZXJyZXIiOiIiLCJyZWZlcnJlckRvbWFpbiI6IiIsInN0YXJ0IjoxNjk1NzM1MDEyNzA3fX0=; _ga_S02BXVX55J=GS1.1.1695735017.3.1.1695735372.0.0.0',
+        'correlationid: 43730fd4-2df9-4239-b9ff-da7d5f53afaa',
+        'marketcode: en',
+        'referer: https://www.betsafe.lv/en/sportsbook/esports/counter-strike-go',
+        'sec-ch-ua: "Google Chrome";v="117", "Not;A=Brand";v="8", "Chromium";v="117"',
+        'sec-ch-ua-mobile: ?1',
+        'sec-ch-ua-platform: "Android"',
+        'sec-fetch-dest: empty',
+        'sec-fetch-mode: cors',
+        'sec-fetch-site: same-origin',
+        'user-agent: Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Mobile Safari/537.36',
+        'x-obg-channel: Web',
+        'x-obg-country-code: ES',
+        'x-obg-device: Mobile',
+        'x-obg-experiments: ssrClientConfiguration',
+        'x-sb-identifier: EVENT_TABLE_REQUEST',
+        'x-sb-segment-guid: 9122d35d-d342-4343-a76d-283b4b18d152',
+    ];
 
-    // Настройки для безголового режима Chrome
-    $options = new ChromeOptions();
-    $options->addArguments(['--headless', '--no-sandbox', '--disable-gpu', '--window-size=1920,1080', '--ignore-certificate-errors', '--allow-running-insecure-content', '--disable-extensions', "--proxy-server='direct://'", '--proxy-bypass-list=*', '--start-maximized', '--disable-dev-shm-usage']);
-    $capabilities = DesiredCapabilities::chrome();
-    $capabilities->setCapability(ChromeOptions::CAPABILITY, $options);
-    // $options->addArguments(['--user-agent=Y	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36 Edg/116.0.1938.54']);
+    $ch = curl_init();
 
-    // Создаем экземпляр RemoteWebDriver
-    $driver = RemoteWebDriver::create($host, $capabilities);
-    try {
-        $driver->get($url);
-        // Дождитесь, пока страница полностью загрузится
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
-        $data = $driver->getPageSource();
-        // echo $data;
-        if ($data) {
-            $html = new simple_html_dom();
-            $html->load($data);
-            // Найдем все контейнеры
-            $containers = $html->find('.obg-event-row-event-container');
+    $response = curl_exec($ch);
 
-            // Проходимся по найденным контейнерам и извлекаем информацию
-            foreach ($containers as $container) {
-                $event = strtolower(trim($container->find('.obg-event-row-market-label', 0)->plaintext));
-                if ($event == 'match result' || $event == 'match winner') {
-                    //Спорт и лига
-                    $ligaElement = $container->find('.obg-event-info-category-label', 0);
-                    $sport_liga = explode(':', $ligaElement->plaintext);
-                    $sport_string = explode('/', $sport_liga[0]);
+    if ($response === false) {
+        echo 'Error: ' . curl_error($ch);
+    } else {
+        $data = json_decode($response);
+        $data = json_decode(json_encode($data), true);
+    }
 
-                    $sport_title = strtolower(trim($sport_string[1]));
-                    $league_title = strtolower(trim($sport_liga[1]));
+    curl_close($ch);
 
-                    $existingSports = Sport::all();
-                    $sport = findOrCreateItemSport($existingSports, 'csgo', Sport::class, 52);
+    $marketIds = [];
 
-                    $existingLeagues = $sport->leagues;
-                    $league = findOrCreateItemLeagueCsgo($existingLeagues, $league_title, League::class, 52, $sport->id);
-                    // Название команды
-                    $participantNameElements = $container->find('.obg-event-info-participant-name');
-                    $team1 = $participantNameElements[0]->plaintext;
-                    $team2 = $participantNameElements[1]->plaintext;
-                    // Дата
-                    // $dateElement = $container->find('.obg-event-status', 0);
-                    // $dateString = trim($dateElement->find('span', 0)->plaintext);
-                    // $date = Carbon::createFromFormat('d M, H:i', $dateString)->format('Y-m-d H:i:s');
+    $existingSports = Sport::all();
+    $sport = findOrCreateItemSport($existingSports, 'csgo', Sport::class, 52);
 
-                    // Здесь выполнение запроса к базе данных, используя значение $date для столбца datetime
+    foreach ($data['data']['selections'] as $selection) {
+        $marketId = $selection['marketId'];
+        if (!in_array($marketId, $marketIds)) {
+            $marketIds[] = $marketId;
+        }
+    }
 
-                    // Создаем запись для игры
-                    $existingGames = $league->games;
-                    $game = findOrCreateItemGameCsgo($existingGames, $team1, $team2, $date = now(), Game::class, 52, $league->id);
+    $output = [];
 
-                    // коэффициенты событий
-                    $coefficientElements = $container->find('.obg-numeric-change span');
-                    if ($event == 'match result') {
-                        $odd_team1 = $coefficientElements[0]->plaintext;
-                        $draw = $coefficientElements[1]->plaintext;
-                        $odd_team2 = $coefficientElements[2]->plaintext;
-                    } elseif ($event == 'match winner') {
-                        $odd_team1 = $coefficientElements[0]->plaintext;
-                        $odd_team2 = $coefficientElements[1]->plaintext;
-                        $draw = 0;
-                    }
+    foreach ($marketIds as $marketId) {
+        $selections = array_filter($data['data']['selections'], function ($selection) use ($marketId) {
+            return $selection['marketId'] === $marketId;
+        });
 
-                    if (!$game['reverse']) {
-                        Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team1, 'draw' => $draw, 'odd_team2' => $odd_team2]);
-                    } else {
-                        Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team2, 'draw' => $draw, 'odd_team2' => $odd_team1]);
-                    }
+        $homeOdds = '';
+        $drawOdds = '';
+        $awayOdds = '';
+
+        $homeLabel = '';
+        $awayLabel = '';
+
+        foreach ($selections as $selection) {
+            if ($selection['selectionTemplateId'] === 'HOME') {
+                $homeOdds = $selection['odds'];
+                if ($selection['participantLabel'] !== 'Draw') {
+                    $homeLabel = $selection['participantLabel'];
+                }
+            } elseif ($selection['selectionTemplateId'] === 'DRAW') {
+                $drawOdds = $selection['odds'];
+            } elseif ($selection['selectionTemplateId'] === 'AWAY') {
+                $awayOdds = $selection['odds'];
+                if ($selection['participantLabel'] !== 'Draw') {
+                    $awayLabel = $selection['participantLabel'];
                 }
             }
         }
+
+        if (!empty($homeLabel) || !empty($homeOdds) || !empty($drawOdds) || !empty($awayOdds) || !empty($awayLabel)) {
+            $output[] = [
+                'Home Label' => $homeLabel,
+                'Away Label' => $awayLabel,
+                'Home Odds' => $homeOdds,
+                'Draw Odds' => $drawOdds,
+                'Away Odds' => $awayOdds,
+            ];
+        }
+    }
+
+    // print_r($output);
+
+    foreach ($output as $values) {
+        if (empty($values['Draw Odds'])) {
+            $team1 = $values['Home Label'];
+            $team2 = $values['Away Label'];
+            $odd_team1 = $values['Home Odds'];
+            $draw = 0;
+            $odd_team2 = $values['Away Odds'];
+
+            foreach ($data['data']['events'] as $event) {
+                if ($event['participants'][0]['label'] == $team1 && $event['participants'][1]['label'] == $team2) {
+                    $slug = $event['slug'];
+                    $id = $event['id'];
+                    $url_match = "https://www.betsafe.lv/en/sportsbook/$slug?eventId=$id";
+
+                    $league_title = $event['competitionName'];
+                    $league_title = str_replace('CS GO: ', '', $league_title);
+                    $league_title = strtolower($league_title);
+
+                    echo "$league_title\n";
+                    $existingLeagues = League::where('sport_id', $sport->id)->get();
+                    $league = findOrCreateItemLeagueCsgo($existingLeagues, $league_title, League::class, 52, $sport->id);
+
+                    $existingGames = $league->games;
+                    $game = findOrCreateItemGame($existingGames, $team1, $team2, $date ?? now(), Game::class, 52, $league->id);
+                    if (!$game['reverse']) {
+                        Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team1, 'draw' => $draw, 'odd_team2' => $odd_team2, 'url' => $url_match]);
+                    } else {
+                        Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team2, 'draw' => $draw, 'odd_team2' => $odd_team1, 'url' => $url_match]);
+                    }
+
+                    break;
+                }
+            }
+        }
+    }
+
+    try {
         echo 'betsafeCsgo';
-        $html->clear();
     } catch (Exception $e) {
         // Обработка ошибки
         echo "Произошла ошибка: betsafeCsgo - $url" . $e->getMessage();
         // Или можете просто проигнорировать ошибку и продолжить выполнение кода дальше
     } finally {
-        $driver->quit();
     }
 }

@@ -37,6 +37,8 @@ function getMatchesSourceKlondaikaCsgo($url, $bookmaker = 'klondaika', $sport = 
             foreach ($data as $match) {
                 if (strtolower(trim($match->parentGroups[1]->name)) == 'cs:go') {
                     if (isset($match->player1->name)) {
+                        $id = $match->id;
+                        $url_match = "https://klondaika.lv/en/sport/prematch/event/$id";
                         $league_title = strtolower(trim($match->parentGroups[2]->name));
                         // var_dump($match->parentGroups[2]);
                         $existingLeagues = League::where('sport_id', $sport->id)->get();
@@ -52,18 +54,18 @@ function getMatchesSourceKlondaikaCsgo($url, $bookmaker = 'klondaika', $sport = 
                             $draw = $match->games[0]->odds[1]->value;
                             $odd_team2 = $match->games[0]->odds[2]->value;
                             if (!$game['reverse']) {
-                                Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team1, 'draw' => $draw, 'odd_team2' => $odd_team2]);
+                                Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team1, 'draw' => $draw, 'odd_team2' => $odd_team2, 'url' => $url_match ?? null]);
                             } else {
-                                Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team2, 'draw' => $draw, 'odd_team2' => $odd_team1]);
+                                Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team2, 'draw' => $draw, 'odd_team2' => $odd_team1, 'url' => $url_match ?? null]);
                             }
                         } else {
                             $odd_team1 = $match->games[0]->odds[0]->value;
                             $odd_team2 = $match->games[0]->odds[1]->value;
                             $draw = 0;
                             if (!$game['reverse']) {
-                                Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team1, 'draw' => $draw, 'odd_team2' => $odd_team2]);
+                                Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team1, 'draw' => $draw, 'odd_team2' => $odd_team2, 'url' => $url_match ?? null]);
                             } else {
-                                Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team2, 'draw' => $draw, 'odd_team2' => $odd_team1]);
+                                Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team2, 'draw' => $draw, 'odd_team2' => $odd_team1, 'url' => $url_match ?? null]);
                             }
                         }
                     }

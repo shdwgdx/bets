@@ -27,7 +27,7 @@ class RemoveOldRecords extends Command
      */
     public function handle()
     {
-        $fourHoursAgo = Carbon::now()->subHours(4);
+        $fourHoursAgo = Carbon::now()->subHours(2);
         Game::where('updated_at', '<', $fourHoursAgo)->delete();
 
         $this->info('Old records have been removed.');

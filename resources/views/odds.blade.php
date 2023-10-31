@@ -60,7 +60,7 @@
             </tr>
             @foreach ($odds as $odd)
                 <tr>
-                    <td>{{ $odd->bookmaker_name }}</td>
+                    <td><a href="{{ $odd->url }}">{{ $odd->bookmaker_name }}</a></td>
                     <td>{{ $odd->odd_team1 }}</td>
                     <td>{{ $odd->draw }}</td>
                     <td>{{ $odd->odd_team2 }}</td>

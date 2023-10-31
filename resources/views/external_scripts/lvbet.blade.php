@@ -11,90 +11,66 @@ use App\Models\Game;
 use App\Models\League;
 use App\Models\Odd;
 use App\Models\Sport;
-function getMatchesSourceLvbet($url, $bookmaker = 'lvbet', $sport = null, $league = null)
+function getMatchesSourceLvbet($url, $bookmaker = 'lvbet', $sport = null, $league = null, $url_string = null)
 {
-    // Устанавливаем параметры для подключения к WebDriver
-    $host = 'http://localhost:9515'; // Адрес и порт WebDriver сервера
+    // Используем функцию file_get_contents() для выполнения GET-запроса и получения JSON данных
+    $jsonData = file_get_contents($url);
 
-    // Настройки для безголового режима Chrome
-    $options = new ChromeOptions();
-    $options->addArguments(['--headless', '--disable-gpu', '--no-sandbox']);
-    $capabilities = DesiredCapabilities::chrome();
-    $capabilities->setCapability(ChromeOptions::CAPABILITY, $options);
+    // Парсим полученные данные в формате JSON
+    $data = json_decode($jsonData);
+    $sport_title = $sport;
 
-    // Создаем экземпляр RemoteWebDriver
-    $driver = RemoteWebDriver::create($host, $capabilities);
+    // Выводим полученные данные
+    // var_dump($data);
     try {
-        $driver->get($url);
-        $wait = new WebDriverWait($driver, 10);
-        $wait->until(WebDriverExpectedCondition::presenceOfAllElementsLocatedBy(WebDriverBy::className('odds-group-entry')));
-        $wait2 = new WebDriverWait($driver, 20);
-        $wait2->until(WebDriverExpectedCondition::presenceOfAllElementsLocatedBy(WebDriverBy::cssSelector('ul.breadcrumbs li a span')));
+        $existingSports = Sport::all();
+        $sport = findOrCreateItemSport($existingSports, $sport ?? $sport_title, Sport::class, 52);
 
-        $data = $driver->getPageSource();
-        // echo $data;
-        if ($data) {
-            $html = new simple_html_dom();
-            $html->load($data);
-
-            // $breadcrumbs = $html->find('ul.breadcrumbs li a span');
-            // $futbolText = $breadcrumbs[1]->plaintext;
-            // $championsLeagueText = $breadcrumbs[3]->plaintext;
-            // echo $futbolText;
-            // echo $championsLeagueText;
-            // $sport_title = strtolower($futbolText);
-            // $league_title = strtolower($championsLeagueText);
-            if ($html) {
-                $existingSports = Sport::all();
-                $sport = findOrCreateItemSport($existingSports, $sport ?? $sport_title, Sport::class, 52);
-
-                $existingLeagues = $sport->leagues;
-                $league = findOrCreateItemLeague($existingLeagues, $league ?? $league_title, League::class, 52, $sport->id);
-
-                $container = $html->find('.sb-prematch', 0);
-                $matches = $container->find('.game-entries .single-game');
-                foreach ($matches as $match) {
-                    //Название команд
-                    $teams = $match->find('.single-game-participants__entry');
-                    $team1 = $teams[0]->plaintext;
-                    $team2 = $teams[1]->plaintext;
-
-                    //Дата
-
-                    if ($match->find('.single-game-date', 0)) {
-                        $dateElement = $match->find('.single-game-date', 0);
-                        $dateElement->find('.single-game-date__entry.has-day', 0)->plaintext;
-                        $dateStr = trim($dateElement->find('.single-game-date__entry.has-day', 0)->plaintext);
-                        $timeStr = trim($dateElement->find('.single-game-date__entry.has-hour', 0)->plaintext);
-                        $combinedString = $dateStr . ' ' . $timeStr;
-                        $date = Carbon::createFromFormat('d.m H:i', $combinedString)->format('Y-m-d H:i:s');
-                    }
-
-                    // Создаем запись для игры
-                    $existingGames = $league->games;
-                    $game = findOrCreateItemGame($existingGames, $team1, $team2, $date = now(), Game::class, 52, $league->id);
-                    $oddscontainer = $match->find('.odds-group-entry', 0);
-                    $odds = $oddscontainer->find('.odds');
-                    if (!$oddscontainer->find('.is-empty')) {
-                        $odd_team1 = $odds[0]->plaintext;
-                        $draw = is_numeric($odds[1]->plaintext) ? $odds[1]->plaintext : 0;
-                        $odd_team2 = $odds[2]->plaintext;
-                    }
+        $existingLeagues = $sport->leagues;
+        $league = findOrCreateItemLeague($existingLeagues, $league ?? $league_title, League::class, 52, $sport->id);
+        // $matches = $data->Result->Items[0]->Events;
+        foreach ($data->primary_column_markets as $market) {
+            if ($market->name == 'Match Result' && $sport_title == 'football') {
+                $team1 = $market->selections[0]->name;
+                $team2 = $market->selections[2]->name;
+                $existingGames = $league->games;
+                $game = findOrCreateItemGame($existingGames, $team1, $team2, $date ?? now(), Game::class, 52, $league->id);
+                $match_id = $market->match_id;
+                $teams_string = str_replace(' ', '-', strtolower($team1)) . '-vs-' . str_replace(' ', '-', strtolower($team2));
+                $url_match = str_replace(['teams_string', 'match_id'], [$teams_string, $match_id], $url_string);
+                if (count($market->selections) == 3) {
+                    $odd_team1 = $market->selections[0]->rate->decimal;
+                    $draw = $market->selections[1]->rate->decimal;
+                    $odd_team2 = $market->selections[2]->rate->decimal;
                     if (!$game['reverse']) {
-                        Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team1, 'draw' => $draw, 'odd_team2' => $odd_team2]);
+                        Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team1, 'draw' => $draw, 'odd_team2' => $odd_team2, 'url' => $url_match]);
                     } else {
-                        Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team2, 'draw' => $draw, 'odd_team2' => $odd_team1]);
+                        Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team2, 'draw' => $draw, 'odd_team2' => $odd_team1, 'url' => $url_match]);
                     }
+                }
+            } elseif (($market->name == 'Money Line' || $market->name == 'Match Winner') && $sport_title !== 'football') {
+                $team1 = $market->selections[0]->name;
+                $team2 = $market->selections[1]->name;
+                $existingGames = $league->games;
+                $game = findOrCreateItemGame($existingGames, $team1, $team2, $date ?? now(), Game::class, 52, $league->id);
+                $match_id = $market->match_id;
+                $teams_string = str_replace(' ', '-', strtolower($team1)) . '-vs-' . str_replace(' ', '-', strtolower($team2));
+                $url_match = str_replace(['teams_string', 'match_id'], [$teams_string, $match_id], $url_string);
+
+                $odd_team1 = $market->selections[0]->rate->decimal;
+                $draw = 0;
+                $odd_team2 = $market->selections[1]->rate->decimal;
+                if (!$game['reverse']) {
+                    Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team1, 'draw' => $draw, 'odd_team2' => $odd_team2, 'url' => $url_match]);
+                } else {
+                    Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team2, 'draw' => $draw, 'odd_team2' => $odd_team1, 'url' => $url_match]);
                 }
             }
         }
         echo 'lvbet';
-        $html->clear();
     } catch (Exception $e) {
         // Обработка ошибки
         echo "Произошла ошибка: lvbet - $url" . $e->getMessage();
         // Или можете просто проигнорировать ошибку и продолжить выполнение кода дальше
-    } finally {
-        $driver->quit();
     }
 }

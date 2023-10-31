@@ -1,52 +1,68 @@
 <?php
 
-function getMatchesSource($url = 'https://sb-data.klondaika.lv/en/events/group/476/?domainId=17&gameTypes=1,3,9,10,15,18,21,16,19,22,11,12,24,2,108,112,59,34,37,40,43,35,38,41,44,95,4,109&lsp=eyJ1cmwiOiJodHRwczovL3ZzdHJlYW1lci5lbmxhYnMuc2VydmljZXMiLCJwcm92aWRlcl9pZHMiOltdfQ==', $bookmaker = 'pafbet')
+use Facebook\WebDriver\Chrome\ChromeOptions;
+use Facebook\WebDriver\Remote\DesiredCapabilities;
+use Facebook\WebDriver\Remote\RemoteWebDriver;
+use Facebook\WebDriver\WebDriverBy;
+use Facebook\WebDriver\WebDriverWait;
+use Facebook\WebDriver\WebDriverExpectedCondition;
+
+use Carbon\Carbon;
+use App\Models\Game;
+use App\Models\League;
+use App\Models\Odd;
+use App\Models\Sport;
+
+function getMatchesSourceMrgreen($url = "https://rollino.io/ca/sport?bt-path=%2Fsoccer%2Fengland%2Fpremier-league-1669818860469096448", $bookmaker = 'mrgreen', $sport = null, $league = null)
 {
-    $opts = array(
-        'http' => array(
-            'user_agent' => 'Y	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36 Edg/116.0.1938.54', // Имя пользователя для запроса
-            'header' => 'Content-type: application/json', // Заголовки запроса
-        )
-    );
+    // Устанавливаем параметры для подключения к WebDriver
+    $host = 'http://localhost:9515'; // Адрес и порт WebDriver сервера
 
-    $context = stream_context_create($opts);
+    // Настройки для безголового режима Chrome
+    $options = new ChromeOptions();
+    $options->addArguments(['--headless', '--disable-gpu', '--no-sandbox']);
+    $options->addArguments(['--user-agent=Y	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36 Edg/116.0.1938.54']);
+    $capabilities = DesiredCapabilities::chrome();
+    $capabilities->setCapability(ChromeOptions::CAPABILITY, $options);
 
-    $jsonData = file_get_contents($url, false, $context);
+    // Создаем экземпляр RemoteWebDriver
+    $driver = RemoteWebDriver::create($host, $capabilities);
+
+    try {
+        $driver->get($url);
+
+        // $wait = new WebDriverWait($driver, 15);
+        // $element = $wait->until(WebDriverExpectedCondition::presenceOfElementLocated(WebDriverBy::tagName('magic-sportsbook')));
+
+        // $shadowRoot = $element->getShadowRoot();
+        // $iframe = $shadowRoot->findElement(WebDriverBy::className('sportnco-sportsbook'));
+
+        // $driver->switchTo()->frame($iframe);
+        $data = $driver->getPageSource();
+
+        if ($data) {
+            $html = new simple_html_dom();
+            $html->load($data);
+            echo $html;
+            // Нахождение нужных элементов с помощью CSS-селекторов
+            // $breadcrumbLists = $html->find('#breadcrumb-list-drag-scroll-alone ul li');
+            // $footballText = trim($breadcrumbLists[1]->plaintext);
+            // $championsLeagueText = trim($breadcrumbLists[3]->plaintext);
+
+            // $sport_title = strtolower($footballText);
+            // $league_title = strtolower($championsLeagueText);
 
 
-    // Парсим полученные данные в формате JSON
-    $data = json_decode($jsonData);
-    echo count($data);
-    // Выводим полученные данные
-    foreach ($data as $match) {
-        $team1 = $match->player1->name;
-        $team2 = $match->player1->name;
-        $odd_team1 = $match->games[0]->odds[0]->value;
-        $draw = $match->games[0]->odds[1]->value;
-        $odd_team2 = $match->games[0]->odds[2]->value;
-        echo "$odd_team1 \t\t";
-        echo "$draw \t\t";
-        echo "$odd_team2 \t\t\n";
+        }
+        echo 'mrgreen';
+        $html->clear();
+    } catch (Exception $e) {
+        // Обработка ошибки
+        echo "Произошла ошибка: mrgreen - $url" . $e->getMessage();
+        // Или можете просто проигнорировать ошибку и продолжить выполнение кода дальше
+    } finally {
+        $driver->quit();
     }
-
-    // if (isset($data->events)) {
-    //     foreach ($data->events as $event) {
-    //         $team1 = $event->event->homeName;
-    //         $team2 = $event->event->awayName;
-    //         // echo $team1;
-    //         // echo $team2;
-    //         if (isset($event->betOffers)) {
-    //             if ($event->betOffers[0]->outcomes == 3) {
-    //                 $odd_team1 = $event->betOffers[0]->outcomes[0]->odds / 1000;
-    //                 $draw = $event->betOffers[0]->outcomes[1]->odds / 1000;
-    //                 $odd_team2 = $event->betOffers[0]->outcomes[2]->odds / 1000;
-    //             } else {
-    //                 $odd_team1 = $event->betOffers[0]->outcomes[0]->odds / 1000;
-    //                 $odd_team2 = $event->betOffers[0]->outcomes[1]->odds / 1000;
-    //                 $draw = 0;
-    //             }
-    //         }
-    //     }
-    // }
 }
-getMatchesSource();
+
+getMatchesSourceMrgreen();

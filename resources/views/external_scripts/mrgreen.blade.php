@@ -13,101 +13,102 @@ use App\Models\Odd;
 use App\Models\Sport;
 function getMatchesSourceMrgreen($url, $bookmaker = 'mrgreen', $sport = null, $league = null)
 {
-    // Устанавливаем параметры для подключения к WebDriver
-    $host = 'http://localhost:9515'; // Адрес и порт WebDriver сервера
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, 'https://ws.sportsbook.mrgreen.lv/component/datatree');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+    $url = '/en_gb/competition/' . "$url";
 
-    // Настройки для безголового режима Chrome
-    $options = new ChromeOptions();
-    $options->addArguments(['--headless', '--disable-gpu', '--no-sandbox']);
-    $options->addArguments(['--user-agent=Y	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36 Edg/116.0.1938.54']);
-    $capabilities = DesiredCapabilities::chrome();
-    $capabilities->setCapability(ChromeOptions::CAPABILITY, $options);
+    $postfields = [
+        'context' => [
+            'url_key' => $url,
+            'clientIp' => '188.92.78.91',
+            'version' => '1.0.1',
+            'device' => 'web_vuejs_mobile',
+            'lang' => 'en_gb',
+            'timezone' => 'UTC',
+            'url_params' => [],
+        ],
+    ];
 
-    // Создаем экземпляр RemoteWebDriver
-    $driver = RemoteWebDriver::create($host, $capabilities);
+    $postfields_json = json_encode($postfields);
+
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $postfields_json);
+
+    $response = curl_exec($ch);
+
+    curl_close($ch);
+
+    $data = json_decode($response);
+
+    $sport_title = $sport;
 
     try {
-        $driver->get($url);
+        $existingSports = Sport::all();
+        $sport = findOrCreateItemSport($existingSports, $sport ?? $sport_title, Sport::class, 52);
 
-        $wait = new WebDriverWait($driver, 15);
-        $element = $wait->until(WebDriverExpectedCondition::presenceOfElementLocated(WebDriverBy::tagName('magic-sportsbook')));
+        $existingLeagues = $sport->leagues;
+        $league = findOrCreateItemLeague($existingLeagues, $league ?? $league_title, League::class, 52, $sport->id);
 
-        $shadowRoot = $element->getShadowRoot();
-        $iframe = $shadowRoot->findElement(WebDriverBy::className('sportnco-sportsbook'));
+        foreach ($data->tree->components as $component) {
+            if ($component->tree_compo_key == 'main_content_competition') {
+                foreach ($component->components as $component) {
+                    if ($component->tree_compo_key == 'prematch_event_list') {
+                        foreach ($component->data->events as $event) {
+                            $team1 = $event->actors[0]->label;
+                            $team2 = $event->actors[1]->label;
 
-        $driver->switchTo()->frame($iframe);
-        $data = $driver->getPageSource();
+                            $existingGames = $league->games;
+                            $game = findOrCreateItemGame($existingGames, $team1, $team2, $date ?? now(), Game::class, 52, $league->id);
 
-        if ($data) {
-            $html = new simple_html_dom();
-            $html->load($data);
+                            $id = $event->id;
+                            $url_match = "https://www.mrgreen.lv/en/sports/event/$id";
 
-            // Нахождение нужных элементов с помощью CSS-селекторов
-            // $breadcrumbLists = $html->find('#breadcrumb-list-drag-scroll-alone ul li');
-            // $footballText = trim($breadcrumbLists[1]->plaintext);
-            // $championsLeagueText = trim($breadcrumbLists[3]->plaintext);
+                            if ($sport_title == 'football') {
+                                foreach ($event->markets as $bet) {
+                                    if ($bet->selection_order_type == '1x2') {
+                                        $odd_team1 = $bet->bets[0]->selections[0]->odds;
+                                        $draw = $bet->bets[0]->selections[1]->odds;
+                                        $odd_team2 = $bet->bets[0]->selections[2]->odds;
 
-            // $sport_title = strtolower($footballText);
-            // $league_title = strtolower($championsLeagueText);
+                                        if (!$game['reverse']) {
+                                            Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team1, 'draw' => $draw, 'odd_team2' => $odd_team2, 'url' => $url_match]);
+                                        } else {
+                                            Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team2, 'draw' => $draw, 'odd_team2' => $odd_team1, 'url' => $url_match]);
+                                        }
 
-            $existingSports = Sport::all();
-            $sport = findOrCreateItemSport($existingSports, $sport ?? $sport_title, Sport::class, 52);
-
-            $existingLeagues = $sport->leagues;
-            $league = findOrCreateItemLeague($existingLeagues, $league ?? $league_title, League::class, 52, $sport->id);
-
-            // Найдем все контейнеры
-            $lines = $html->find('.lines');
-            foreach ($lines as $line) {
-                if ($line->find('.question-list span', 0)) {
-                    $event = strtolower(trim($line->find('.question-list span', 0)->plaintext));
-
-                    if ($event == 'match result' || $event == 'money line') {
-                        //Команды
-                        $teams = $line->find('[class^=actor-]');
-                        $team1 = $teams[0]->plaintext;
-                        $team2 = $teams[1]->plaintext;
-
-                        // // Нахождение элемента, содержащего дату и время
-                        // $dateElement = $line->find('.date-event', 0);
-                        // // Извлечение значения даты и времени
-                        // $dateValue = trim($dateElement->find('span', 0)->plaintext);
-                        // $timeValue = trim($dateElement->find('span', 1)->plaintext);
-                        // // Преобразование значения даты и времени с помощью Carbon
-                        // $date = Carbon::createFromFormat('D d M H:i', $dateValue . ' ' . $timeValue)->format('Y-m-d H:i:s');
-
-                        $existingGames = $league->games;
-                        $game = findOrCreateItemGame($existingGames, $team1, $team2, $date = now(), Game::class, 52, $league->id);
-                        $oddsBox = $line->find('.odds-box-total', 0);
-                        if (!empty($oddsBox)) {
-                            $elements = $oddsBox->find('span.odd.vertical.centered');
-
-                            if (count($elements) == 3 && $event == 'match result') {
-                                $odd_team1 = $elements[0]->find('.container-odd-and-trend', 0)->plaintext;
-                                $draw = $elements[1]->find('.container-odd-and-trend', 0)->plaintext;
-                                $odd_team2 = $elements[2]->find('.container-odd-and-trend', 0)->plaintext;
-                            } elseif (count($elements) == 2 && $event == 'money line') {
-                                $odd_team1 = $elements[0]->find('.container-odd-and-trend', 0)->plaintext;
-                                $odd_team2 = $elements[1]->find('.container-odd-and-trend', 0)->plaintext;
-                                $draw = 0;
-                            }
-                            if (!$game['reverse']) {
-                                Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team1, 'draw' => $draw, 'odd_team2' => $odd_team2]);
+                                        // echo "$team1:$odd_team1 vs $team2:$odd_team2\n";
+                                    }
+                                }
                             } else {
-                                Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team2, 'draw' => $draw, 'odd_team2' => $odd_team1]);
+                                foreach ($event->markets as $bet) {
+                                    if ($bet->selection_order_type == 'moneyline') {
+                                        $odd_team1 = $bet->bets[0]->selections[0]->odds;
+                                        $draw = 0;
+                                        $odd_team2 = $bet->bets[0]->selections[1]->odds;
+
+                                        if (!$game['reverse']) {
+                                            Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team1, 'draw' => $draw, 'odd_team2' => $odd_team2, 'url' => $url_match]);
+                                        } else {
+                                            Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team2, 'draw' => $draw, 'odd_team2' => $odd_team1, 'url' => $url_match]);
+                                        }
+
+                                        // echo "$team1:$odd_team1 vs $team2:$odd_team2\n";
+                                    }
+                                }
                             }
                         }
+                        break;
                     }
                 }
+                break;
             }
         }
+
         echo 'mrgreen';
-        $html->clear();
     } catch (Exception $e) {
         // Обработка ошибки
         echo "Произошла ошибка: mrgreen - $url" . $e->getMessage();
         // Или можете просто проигнорировать ошибку и продолжить выполнение кода дальше
-    } finally {
-        $driver->quit();
     }
 }
