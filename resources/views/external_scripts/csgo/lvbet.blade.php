@@ -43,7 +43,7 @@ function getMatchesSourceLvbetCsgo($url, $bookmaker = 'lvbet')
         $matches = json_decode($jsonMatches);
 
         $existingSports = Sport::all();
-        $sport = findOrCreateItemSport($existingSports, 'csgo', Sport::class, 52);
+        $sport = findOrCreateItemSport($existingSports, 'cs', Sport::class, 52);
 
         foreach ($leaguesArray as $leagueItem) {
             $league_title = strtolower($leagueItem['name']);

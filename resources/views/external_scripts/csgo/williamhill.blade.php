@@ -13,36 +13,35 @@ use App\Models\Odd;
 use App\Models\Sport;
 function getMatchesSourceWilliamhillCsgo($url, $bookmaker = 'williamhill')
 {
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, 'https://ws.sportsbook.williamhill.lv/component/datatree');
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-
-    $postfields = [
-        'context' => [
-            'url_key' => '/en_gb/category/2120-cs-go',
-            'clientIp' => '188.92.78.91',
-            'version' => '1.0.1',
-            'device' => 'web_vuejs_mobile',
-            'lang' => 'en_gb',
-            'timezone' => 'UTC',
-            'url_params' => [],
-        ],
-    ];
-
-    $postfields_json = json_encode($postfields);
-
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $postfields_json);
-
-    $response = curl_exec($ch);
-
-    curl_close($ch);
-
-    $data = json_decode($response);
-
     try {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, 'https://ws.sportsbook.williamhill.lv/component/datatree');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+
+        $postfields = [
+            'context' => [
+                'url_key' => '/en_gb/category/2120-cs-go',
+                'clientIp' => '188.92.78.91',
+                'version' => '1.0.1',
+                'device' => 'web_vuejs_mobile',
+                'lang' => 'en_gb',
+                'timezone' => 'UTC',
+                'url_params' => [],
+            ],
+        ];
+
+        $postfields_json = json_encode($postfields);
+
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $postfields_json);
+
+        $response = curl_exec($ch);
+
+        curl_close($ch);
+
+        $data = json_decode($response);
         $existingSports = Sport::all();
-        $sport = findOrCreateItemSport($existingSports, 'csgo', Sport::class, 52);
+        $sport = findOrCreateItemSport($existingSports, 'cs', Sport::class, 52);
 
         foreach ($data->tree->components as $component) {
             if ($component->tree_compo_key == 'main_content_category') {
@@ -51,7 +50,7 @@ function getMatchesSourceWilliamhillCsgo($url, $bookmaker = 'williamhill')
                         foreach ($component->data->events as $event) {
                             $team1 = $event->actors[0]->label;
                             $team2 = $event->actors[1]->label;
-
+                            $start_date = $event->start;
                             $id = $event->id;
                             $url_match = "https://www.williamhill.lv/en/sports/event/$id";
 
@@ -63,7 +62,7 @@ function getMatchesSourceWilliamhillCsgo($url, $bookmaker = 'williamhill')
                             $league = findOrCreateItemLeagueCsgo($existingLeagues, $league_title, League::class, 52, $sport->id);
 
                             $existingGames = $league->games;
-                            $game = findOrCreateItemGame($existingGames, $team1, $team2, $date ?? now(), Game::class, 52, $league->id);
+                            $game = findOrCreateItemGame($existingGames, $team1, $team2, $date ?? now(), Game::class, 52, $league->id, $score_team1 ?? 0, $score_team2 ?? 0, $live ?? 0, $start_date ?? null);
 
                             foreach ($event->markets as $bet) {
                                 if ($bet->selection_order_type == 'moneyline' && $bet->bets[0]->label == 'Match result') {

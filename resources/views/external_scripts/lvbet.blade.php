@@ -13,16 +13,15 @@ use App\Models\Odd;
 use App\Models\Sport;
 function getMatchesSourceLvbet($url, $bookmaker = 'lvbet', $sport = null, $league = null, $url_string = null)
 {
-    // Используем функцию file_get_contents() для выполнения GET-запроса и получения JSON данных
-    $jsonData = file_get_contents($url);
-
-    // Парсим полученные данные в формате JSON
-    $data = json_decode($jsonData);
-    $sport_title = $sport;
-
     // Выводим полученные данные
     // var_dump($data);
     try {
+        // Используем функцию file_get_contents() для выполнения GET-запроса и получения JSON данных
+        $jsonData = file_get_contents($url);
+
+        // Парсим полученные данные в формате JSON
+        $data = json_decode($jsonData);
+        $sport_title = $sport;
         $existingSports = Sport::all();
         $sport = findOrCreateItemSport($existingSports, $sport ?? $sport_title, Sport::class, 52);
 

@@ -13,15 +13,15 @@ use App\Models\Odd;
 use App\Models\Sport;
 function getMatchesSourceTonybet($url, $bookmaker = 'tonybet', $sport = null, $league = null, $url_string = null)
 {
-    // Используем функцию file_get_contents() для выполнения GET-запроса и получения JSON данных
-    $jsonData = file_get_contents($url);
-
-    // Парсим полученные данные в формате JSON
-    $data = json_decode($jsonData);
-    $sport_title = $sport;
-    // Выводим полученные данные
-    // var_dump($data);
     try {
+        // Используем функцию file_get_contents() для выполнения GET-запроса и получения JSON данных
+        $jsonData = file_get_contents($url);
+
+        // Парсим полученные данные в формате JSON
+        $data = json_decode($jsonData);
+        $sport_title = $sport;
+        // Выводим полученные данные
+        // var_dump($data);
         $existingSports = Sport::all();
         $sport = findOrCreateItemSport($existingSports, $sport ?? $sport_title, Sport::class, 52);
 
@@ -31,14 +31,19 @@ function getMatchesSourceTonybet($url, $bookmaker = 'tonybet', $sport = null, $l
         $ids = array_column($items, 'id');
         $competitorIds = array_column($items, 'competitor2Id', 'competitor1Id');
         foreach ($ids as $id) {
+            $match_id = $id;
+            $url_match = str_replace(['match_id'], [$match_id], $url_string);
             $competitor1Id = null;
             $competitor2Id = null;
-
+            $score_team1 = null;
+            $score_team2 = null;
+            $live = false;
             // Ищем соответствующий элемент с заданным id
             foreach ($items as $item) {
                 if ($item->id == $id) {
                     $competitor1Id = $item->competitor1Id;
                     $competitor2Id = $item->competitor2Id;
+                    $start_date = $item->time;
                     break;
                 }
             }
@@ -52,11 +57,20 @@ function getMatchesSourceTonybet($url, $bookmaker = 'tonybet', $sport = null, $l
                     $team2 = $competitor->name;
                 }
             }
-            $existingGames = $league->games;
-            $game = findOrCreateItemGame($existingGames, $team1, $team2, $date ?? now(), Game::class, 52, $league->id);
+            if ($data->data->relations->result) {
+                foreach ($data->data->relations->result as $result) {
+                    if ($result->eventId == $match_id) {
+                        if ($result->team1Score != null || $result->team2Score != null) {
+                            $score_team1 = $result->team1Score;
+                            $score_team2 = $result->team2Score;
+                            $live = true;
+                        }
+                    }
+                }
+            }
 
-            $match_id = $id;
-            $url_match = str_replace(['match_id'], [$match_id], $url_string);
+            $existingGames = $league->games;
+            $game = findOrCreateItemGame($existingGames, $team1, $team2, $date ?? now(), Game::class, 52, $league->id, $score_team1, $score_team2, $live, $start_date);
 
             if ($sport_title == 'football') {
                 foreach ($data->data->relations->odds->{$id} as $outcomes) {

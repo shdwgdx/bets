@@ -13,15 +13,15 @@ use App\Models\Odd;
 use App\Models\Sport;
 function getMatchesSourceRabona($url, $bookmaker = 'rabona', $sport = null, $league = null)
 {
-    // Используем функцию file_get_contents() для выполнения GET-запроса и получения JSON данных
-    $jsonData = file_get_contents($url);
-
-    // Парсим полученные данные в формате JSON
-    $data = json_decode($jsonData);
-
-    // Выводим полученные данные
-    // var_dump($data);
     try {
+        // Используем функцию file_get_contents() для выполнения GET-запроса и получения JSON данных
+        $jsonData = file_get_contents($url);
+
+        // Парсим полученные данные в формате JSON
+        $data = json_decode($jsonData);
+
+        // Выводим полученные данные
+        // var_dump($data);
         $existingSports = Sport::all();
         $sport = findOrCreateItemSport($existingSports, $sport ?? $sport_title, Sport::class, 52);
 
@@ -31,8 +31,18 @@ function getMatchesSourceRabona($url, $bookmaker = 'rabona', $sport = null, $lea
         foreach ($matches as $match) {
             $team1 = $match->Competitors[0]->Name;
             $team2 = $match->Competitors[1]->Name;
+            $score_team1 = null;
+            $score_team2 = null;
+            $live = false;
+            $start_date = $match->EventDate;
+            if ($match->IsLiveEvent == true) {
+                $scores = explode(':', $match->LiveScore);
+                $score_team1 = $scores[0];
+                $score_team2 = $scores[1];
+                $live = true;
+            }
             $existingGames = $league->games;
-            $game = findOrCreateItemGame($existingGames, $team1, $team2, $date ?? now(), Game::class, 52, $league->id);
+            $game = findOrCreateItemGame($existingGames, $team1, $team2, $date ?? now(), Game::class, 52, $league->id, $score_team1, $score_team2, $live, $start_date);
 
             $id = $match->Id;
             $url_match = "https://rab0na-3142.com/en/sport?eventid=$id";

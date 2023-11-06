@@ -13,37 +13,36 @@ use App\Models\Odd;
 use App\Models\Sport;
 function getMatchesSourceWilliamhill($url, $bookmaker = 'williamhill', $sport = null, $league = null)
 {
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, 'https://ws.sportsbook.williamhill.lv/component/datatree');
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-    $url = '/en_gb/competition/' . "$url";
-
-    $postfields = [
-        'context' => [
-            'url_key' => $url,
-            'clientIp' => '188.92.78.91',
-            'version' => '1.0.1',
-            'device' => 'web_vuejs_mobile',
-            'lang' => 'en_gb',
-            'timezone' => 'UTC',
-            'url_params' => [],
-        ],
-    ];
-
-    $postfields_json = json_encode($postfields);
-
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $postfields_json);
-
-    $response = curl_exec($ch);
-
-    curl_close($ch);
-
-    $data = json_decode($response);
-
-    $sport_title = $sport;
-
     try {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, 'https://ws.sportsbook.williamhill.lv/component/datatree');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+        $url = '/en_gb/competition/' . "$url";
+
+        $postfields = [
+            'context' => [
+                'url_key' => $url,
+                'clientIp' => '188.92.78.91',
+                'version' => '1.0.1',
+                'device' => 'web_vuejs_mobile',
+                'lang' => 'en_gb',
+                'timezone' => 'UTC',
+                'url_params' => [],
+            ],
+        ];
+
+        $postfields_json = json_encode($postfields);
+
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $postfields_json);
+
+        $response = curl_exec($ch);
+
+        curl_close($ch);
+
+        $data = json_decode($response);
+
+        $sport_title = $sport;
         $existingSports = Sport::all();
         $sport = findOrCreateItemSport($existingSports, $sport ?? $sport_title, Sport::class, 52);
 
@@ -57,9 +56,9 @@ function getMatchesSourceWilliamhill($url, $bookmaker = 'williamhill', $sport = 
                         foreach ($component->data->events as $event) {
                             $team1 = $event->actors[0]->label;
                             $team2 = $event->actors[1]->label;
-
+                            $start_date = $event->start;
                             $existingGames = $league->games;
-                            $game = findOrCreateItemGame($existingGames, $team1, $team2, $date ?? now(), Game::class, 52, $league->id);
+                            $game = findOrCreateItemGame($existingGames, $team1, $team2, $date ?? now(), Game::class, 52, $league->id, $score_team1 ?? 0, $score_team2 ?? 0, $live ?? 0, $start_date ?? null);
 
                             $id = $event->id;
                             $url_match = "https://www.williamhill.lv/en/sports/event/$id";

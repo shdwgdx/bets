@@ -1,4 +1,5 @@
 <?php
+use Carbon\Carbon;
 function findOrCreateItemSport($existingItems, $name, $className, $similarityThreshold)
 {
     $similarityThreshold = 80;
@@ -188,8 +189,11 @@ function findOrCreateItemLeague($existingItems, $name, $className, $similarityTh
 //     }
 // }
 
-function findOrCreateItemGame($existingItems, $team1, $team2, $date, $className, $similarityThreshold, $leagueId)
+function findOrCreateItemGame($existingItems, $team1, $team2, $date, $className, $similarityThreshold, $leagueId, $score_team1 = null, $score_team2 = null, $live = false, $start_date = null)
 {
+    if ($start_date) {
+        $start_date = Carbon::parse($start_date)->toDateTimeString();
+    }
     $item = null;
     $maxSimilarity = 0;
     $similarityThreshold = 80;
@@ -261,6 +265,12 @@ function findOrCreateItemGame($existingItems, $team1, $team2, $date, $className,
         'olympiacos' => 'olympiacos piraeus',
         'hacken gothenburg' => 'bk hacken',
         'cologne' => '1.fc koln',
+        'nexus gaming' => 'nexus',
+        'union berlin' => '1. fc union berlin',
+        'tottenham hotspur' => 'tottenham',
+        'chelsea fc' => 'chelsea',
+        'man city' => 'manchester city fc',
+        'manchester city fc' => 'manchester united',
     ];
     $team1 = isset($teamMappings[$team1]) ? $teamMappings[$team1] : $team1;
     $team2 = isset($teamMappings[$team2]) ? $teamMappings[$team2] : $team2;
@@ -283,9 +293,21 @@ function findOrCreateItemGame($existingItems, $team1, $team2, $date, $className,
     }
 
     if ($item !== null) {
+        if ($item->start_date != null) {
+            $start_date = $item->start_date;
+        }
+        $item->update([
+            'date' => $date,
+            'league_id' => $leagueId,
+            'score_team1' => $score_team1,
+            'score_team2' => $score_team2,
+            'live' => $live,
+            'start_date' => $start_date,
+        ]);
         return ['item' => $item, 'reverse' => false];
     } else {
         // Проверяем команды в обратном порядке
+
         foreach ($existingItems as $existingItem) {
             $reverseSimilarity1 = 0;
             $existingTeam2 = strtolower(trim($existingItem->team2));
@@ -304,6 +326,17 @@ function findOrCreateItemGame($existingItems, $team1, $team2, $date, $className,
         }
 
         if ($item !== null) {
+            if ($item->start_date != null) {
+                $start_date = $item->start_date;
+            }
+            $item->update([
+                'date' => $date,
+                'league_id' => $leagueId,
+                'score_team1' => $score_team1,
+                'score_team2' => $score_team2,
+                'live' => $live,
+                'start_date' => $start_date,
+            ]);
             return ['item' => $item, 'reverse' => true];
         } else {
             $newItem = $className::create([
@@ -311,6 +344,10 @@ function findOrCreateItemGame($existingItems, $team1, $team2, $date, $className,
                 'team1' => $team1,
                 'team2' => $team2,
                 'league_id' => $leagueId,
+                'score_team1' => $score_team1,
+                'score_team2' => $score_team2,
+                'live' => $live,
+                'start_date' => $start_date,
             ]);
             return ['item' => $newItem, 'reverse' => false];
         }

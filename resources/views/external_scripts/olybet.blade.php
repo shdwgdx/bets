@@ -13,19 +13,19 @@ use App\Models\Odd;
 use App\Models\Sport;
 function getMatchesSourceOlybet($url, $bookmaker = 'olybet', $sport = null, $league = null)
 {
-    // Устанавливаем параметры для подключения к WebDriver
-    $host = 'http://localhost:9515'; // Адрес и порт WebDriver сервера
-
-    // Настройки для безголового режима Chrome
-    $options = new ChromeOptions();
-    $options->addArguments(['--headless', '--disable-gpu', '--no-sandbox', '--window-size=1440,1400', '--ignore-certificate-errors', '--allow-running-insecure-content', '--disable-extensions', "--proxy-server='direct://'", '--proxy-bypass-list=*', '--start-maximized', '--disable-dev-shm-usage']);
-    $options->addArguments(['--user-agent=Y	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36 Edg/116.0.1938.54']);
-    $capabilities = DesiredCapabilities::chrome();
-    $capabilities->setCapability(ChromeOptions::CAPABILITY, $options);
-
-    // Создаем экземпляр RemoteWebDriver
-    $driver = RemoteWebDriver::create($host, $capabilities);
     try {
+        // Устанавливаем параметры для подключения к WebDriver
+        $host = 'http://localhost:9515'; // Адрес и порт WebDriver сервера
+
+        // Настройки для безголового режима Chrome
+        $options = new ChromeOptions();
+        $options->addArguments(['--headless', '--disable-gpu', '--no-sandbox', '--window-size=1440,1400', '--ignore-certificate-errors', '--allow-running-insecure-content', '--disable-extensions', "--proxy-server='direct://'", '--proxy-bypass-list=*', '--start-maximized', '--disable-dev-shm-usage']);
+        $options->addArguments(['--user-agent=Y	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36 Edg/116.0.1938.54']);
+        $capabilities = DesiredCapabilities::chrome();
+        $capabilities->setCapability(ChromeOptions::CAPABILITY, $options);
+
+        // Создаем экземпляр RemoteWebDriver
+        $driver = RemoteWebDriver::create($host, $capabilities);
         $driver->get($url);
         $wait = new WebDriverWait($driver, 15);
         $wait->until(WebDriverExpectedCondition::presenceOfAllElementsLocatedBy(WebDriverBy::id('bcsportsbookiframe')));
@@ -62,7 +62,7 @@ function getMatchesSourceOlybet($url, $bookmaker = 'olybet', $sport = null, $lea
             // echo $league_title;
             // $sport_title = strtolower('football');
             // $league_title = strtolower($league_title);
-
+            $url_match = $url;
             $existingSports = Sport::all();
             $sport = findOrCreateItemSport($existingSports, $sport ?? $sport_title, Sport::class, 52);
 
@@ -103,9 +103,9 @@ function getMatchesSourceOlybet($url, $bookmaker = 'olybet', $sport = null, $lea
                     }
 
                     if (!$game['reverse']) {
-                        Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team1, 'draw' => $draw, 'odd_team2' => $odd_team2]);
+                        Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team1, 'draw' => $draw, 'odd_team2' => $odd_team2, 'url' => $url_match ?? null]);
                     } else {
-                        Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team2, 'draw' => $draw, 'odd_team2' => $odd_team1]);
+                        Odd::updateOrCreate(['game_id' => $game['item']->id, 'bookmaker_name' => $bookmaker], ['odd_team1' => $odd_team2, 'draw' => $draw, 'odd_team2' => $odd_team1, 'url' => $url_match ?? null]);
                     }
                 }
             }
